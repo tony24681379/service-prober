@@ -2,7 +2,7 @@
 service:
 - name: mongo
   protocol: http
-  ip: 127.0.0.1
+  ip: http://127.0.0.1
   port: 27017
   timeout: 15s
 - name: casandra

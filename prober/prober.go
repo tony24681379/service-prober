@@ -7,10 +7,14 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	yaml "gopkg.in/yaml.v2"
+	"k8s.io/kubernetes/pkg/probe"
 	httprobe "k8s.io/kubernetes/pkg/probe/http"
 	tcprobe "k8s.io/kubernetes/pkg/probe/tcp"
 )
@@ -83,6 +87,13 @@ func (c *probeConfig) convertDataToStruct(configFile []byte) error {
 	if err != nil {
 		return err
 	}
+	for _, config := range c.Service {
+		_, err := url.Parse(config.IP + ":" + strconv.Itoa(config.Port))
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -91,6 +102,7 @@ func Prober(configFileName string, port string) error {
 	config := newConfig(configFileName)
 	p := newProber(config)
 	fmt.Println(p)
+	p.serveHTTP(port)
 	return nil
 }
 
@@ -114,16 +126,42 @@ func newConfig(configFileName string) probeConfig {
 }
 
 func (p *prober) serveHTTP(port string) {
-	http.HandleFunc("/readiness", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/liveness", func(w http.ResponseWriter, r *http.Request) {
 		ok := true
-		errMsg := ""
+		var (
+			errMsgs []string
+			health  probe.Result
+			output  string
+			err     error
+		)
+		for _, config := range p.config.Service {
+			errMsg := ""
+			if config.Protocol == "tcp" {
+				health, output, err = p.tcp.Probe(config.IP, config.Port, config.TimeOut)
+			} else if config.Protocol == "http" {
+				u, _ := url.Parse(config.IP + ":" + strconv.Itoa(config.Port))
+				health, output, err = p.http.Probe(u, nil, config.TimeOut)
+			}
+
+			if health != probe.Success {
+				errMsg += config.Name + " " + output + "\n"
+				ok = false
+			}
+			if err != nil {
+				errMsg += err.Error()
+				ok = false
+			}
+			errMsgs = append(errMsgs, errMsg)
+		}
 
 		if ok {
 			w.Write([]byte("OK"))
 		} else {
 			// Send 503
-			http.Error(w, errMsg, http.StatusServiceUnavailable)
+			log.Println(errMsgs)
+			http.Error(w, strings.Join(errMsgs, ""), http.StatusServiceUnavailable)
 		}
 	})
+	log.Print("serve on port:", port)
 	http.ListenAndServe(":"+port, nil)
 }

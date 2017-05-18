@@ -38,7 +38,7 @@ func TestConvertDataToStruct(t *testing.T) {
 			{
 				Name:     "mongo",
 				Protocol: "http",
-				IP:       "127.0.0.1",
+				IP:       "http://127.0.0.1",
 				Port:     27017,
 				TimeOut:  time.Duration(15) * time.Second,
 			},
@@ -63,7 +63,7 @@ func TestConvertDataToStruct(t *testing.T) {
 service:
 - name: mongo
   protocol: http
-  ip: 127.0.0.1
+  ip: http://127.0.0.1
   port: 27017
   timeout: 15s
 - name: casandra
@@ -86,7 +86,7 @@ service:
 		{
 			"name": "mongo",
 			"protocol": "http",
-			"ip": "127.0.0.1",
+			"ip": "http://127.0.0.1",
 			"port": 27017,
 			"timeout": 15000000000
 		},

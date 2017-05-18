@@ -19,40 +19,42 @@ func TestGetConfigType(t *testing.T) {
 		{"abc.asd.a", "", errors.New("please use yaml or json config file")},
 	}
 	for i, tt := range tests {
-		result, err := getConfigType(tt.configName)
-		if result != tt.expectedResult {
-			t.Errorf("#%d: expected result=%v, get=%v", i, tt.expectedResult, result)
-		}
+		c := probeConfig{}
+		err := c.getConfigType(tt.configName)
 		if err != nil {
 			if err.Error() != tt.expectedError.Error() {
 				t.Errorf("#%d: expected error=%v, get=%v", i, tt.expectedError, err)
 			}
 		}
+		if c.configType != tt.expectedResult {
+			t.Errorf("#%d: expected result=%v, get=%v", i, tt.expectedResult, c.configType)
+		}
 	}
 }
 
 func TestConvertDataToStruct(t *testing.T) {
-	expectedService := services{
+	expectedServics :=
 		Service{
 			{
 				Name:     "mongo",
 				Protocol: "http",
-				IP:       "127.0.0.1:27017",
+				IP:       "127.0.0.1",
+				Port:     27017,
 				TimeOut:  time.Duration(15) * time.Second,
 			},
 			{
 				Name:     "casandra",
 				Protocol: "tcp",
-				IP:       "127.0.0.1:9042",
+				IP:       "127.0.0.1",
+				Port:     9042,
 				TimeOut:  time.Duration(15) * time.Second,
 			},
-		},
-	}
+		}
 	tests := []struct {
-		configType      string
-		configFile      []byte
-		expectedService services
-		expectedError   error
+		expectedConfigType string
+		configFile         []byte
+		expectedConfig     probeConfig
+		expectedError      error
 	}{
 		{
 			"yaml",
@@ -61,14 +63,19 @@ func TestConvertDataToStruct(t *testing.T) {
 service:
 - name: mongo
   protocol: http
-  ip: 127.0.0.1:27017
+  ip: 127.0.0.1
+  port: 27017
   timeout: 15s
 - name: casandra
   protocol: tcp
-  ip: 127.0.0.1:9042
+  ip: 127.0.0.1
+  port: 9042
   timeout: 15s
 `),
-			expectedService,
+			probeConfig{
+				"yaml",
+				expectedServics,
+			},
 			nil,
 		},
 		{
@@ -79,27 +86,33 @@ service:
 		{
 			"name": "mongo",
 			"protocol": "http",
-			"ip": "127.0.0.1:27017",
+			"ip": "127.0.0.1",
+			"port": 27017,
 			"timeout": 15000000000
 		},
 		{
             "name": "casandra",
             "protocol": "tcp",
-            "ip": "127.0.0.1:9042",
+            "ip": "127.0.0.1",
+			"port": 9042,
             "timeout": 15000000000
         }
 	]
 }
 `),
-			expectedService,
+			probeConfig{
+				"json",
+				expectedServics,
+			},
 			nil,
 		},
 	}
 	for i, tt := range tests {
-		var s = services{}
-		err := convertDataToStruct(tt.configType, tt.configFile, &s)
-		if !reflect.DeepEqual(s, tt.expectedService) {
-			t.Errorf("#%d: expected result=%v, get=%v", i, tt.expectedService, s)
+		var c = probeConfig{}
+		c.configType = tt.expectedConfigType
+		err := c.convertDataToStruct(tt.configFile)
+		if !reflect.DeepEqual(c, tt.expectedConfig) {
+			t.Errorf("#%d: expected result=%v, get=%v", i, tt.expectedConfig, c)
 		}
 		if err != nil {
 			if err.Error() != tt.expectedError.Error() {

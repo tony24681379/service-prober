@@ -5,17 +5,23 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
+	"net/http"
 	"regexp"
 	"time"
 
 	yaml "gopkg.in/yaml.v2"
+	httprobe "k8s.io/kubernetes/pkg/probe/http"
+	tcprobe "k8s.io/kubernetes/pkg/probe/tcp"
 )
 
-type services struct {
-	Service []struct {
+type probeConfig struct {
+	configType string
+	Service    []struct {
 		Name     string
 		Protocol string
 		IP       string
+		Port     int
 		TimeOut  time.Duration
 	}
 }
@@ -25,52 +31,99 @@ type Service []struct {
 	Name     string
 	Protocol string
 	IP       string
+	Port     int
 	TimeOut  time.Duration
 }
 
-//Prober init prober
-func Prober(configName string) error {
-	s := services{}
-
-	configType, err := getConfigType(configName)
-	if err != nil {
-		return err
-	}
-	configFile, err := ioutil.ReadFile(configName)
-	if err != nil {
-		return err
-	}
-
-	err = convertDataToStruct(configType, configFile, &s)
-	if err != nil {
-		return err
-	}
-	fmt.Println(s)
-	return nil
+type prober struct {
+	http   httprobe.HTTPProber
+	tcp    tcprobe.TCPProber
+	config probeConfig
 }
 
-func getConfigType(configName string) (string, error) {
+func (c *probeConfig) getConfigType(configFileName string) error {
 	reg := `(\w*.$)`
 	regex, err := regexp.Compile(reg)
-	result := string(regex.Find([]byte(configName)))
+	if err != nil {
+		return err
+	}
+	result := string(regex.Find([]byte(configFileName)))
 	if result == "yml" {
 		result = "yaml"
 	}
 	if result != "yaml" && result != "json" {
-		return "", errors.New("please use yaml or json config file")
+		return errors.New("please use yaml or json config file")
 	}
-	return result, err
+	c.configType = result
+	return nil
 }
 
-func convertDataToStruct(configType string, configFile []byte, s *services) error {
+func (c *probeConfig) readConfig(configFileName string) error {
 	var err error
-	if configType == "yaml" {
-		err = yaml.Unmarshal(configFile, &s)
-	} else if configType == "json" {
-		err = json.Unmarshal(configFile, &s)
+	err = c.getConfigType(configFileName)
+	if err != nil {
+		return err
+	}
+
+	configFile, err := ioutil.ReadFile(configFileName)
+	if err != nil {
+		return err
+	}
+	c.convertDataToStruct(configFile)
+	return nil
+}
+
+func (c *probeConfig) convertDataToStruct(configFile []byte) error {
+	var err error
+	if c.configType == "yaml" {
+		err = yaml.Unmarshal(configFile, &c)
+	} else if c.configType == "json" {
+		err = json.Unmarshal(configFile, &c)
 	}
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+//Prober init prober
+func Prober(configFileName string, port string) error {
+	config := newConfig(configFileName)
+	p := newProber(config)
+	fmt.Println(p)
+	return nil
+}
+
+func newProber(c probeConfig) *prober {
+	p := &prober{
+		http:   httprobe.New(),
+		tcp:    tcprobe.New(),
+		config: c,
+	}
+	return p
+}
+
+func newConfig(configFileName string) probeConfig {
+	c := probeConfig{}
+	err := c.readConfig(configFileName)
+	if err != nil {
+		log.Fatal(err)
+		panic(err)
+	}
+	return c
+}
+
+func (p *prober) serveHTTP(port string) {
+	http.HandleFunc("/readiness", func(w http.ResponseWriter, r *http.Request) {
+		ok := true
+		errMsg := ""
+
+		if ok {
+			w.Write([]byte("OK"))
+		} else {
+			// Send 503
+			http.Error(w, errMsg, http.StatusServiceUnavailable)
+		}
+	})
+	http.ListenAndServe(":"+port, nil)
 }

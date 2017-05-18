@@ -27,6 +27,7 @@ import (
 type options struct {
 	Debug  bool
 	Config string
+	Port   string
 }
 
 var opts = options{}
@@ -70,10 +71,11 @@ func initProgramFlag(rootCmd *cobra.Command) {
 	rootCmd.PersistentFlags().BoolVarP(&opts.Debug, "debug", "D", false, "Enable debug mode")
 	flags := rootCmd.Flags()
 	flags.StringVar(&opts.Config, "config", "", "config file")
+	flags.StringVar(&opts.Config, "port", "10000", "serve port(default 10000)")
 }
 
 func runProber(opts options) {
-	err := prober.Prober(opts.Config)
+	err := prober.Prober(opts.Config, opts.Port)
 	log.Fatal(err)
 	panic(err)
 }

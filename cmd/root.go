@@ -71,7 +71,7 @@ func initProgramFlag(rootCmd *cobra.Command) {
 	rootCmd.PersistentFlags().BoolVarP(&opts.Debug, "debug", "D", false, "Enable debug mode")
 	flags := rootCmd.Flags()
 	flags.StringVar(&opts.Config, "config", "", "config file")
-	flags.StringVar(&opts.Config, "port", "10000", "serve port(default 10000)")
+	flags.StringVar(&opts.Port, "port", "10000", "serve port")
 }
 
 func runProber(opts options) {

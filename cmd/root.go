@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/Sirupsen/logrus"
@@ -72,5 +73,7 @@ func initProgramFlag(rootCmd *cobra.Command) {
 }
 
 func runProber(opts options) {
-	prober.Prober(opts.Config)
+	err := prober.Prober(opts.Config)
+	log.Fatal(err)
+	panic(err)
 }

@@ -3,13 +3,15 @@
         {
             "name": "mongo",
             "protocol": "http",
-            "ip": "127.0.0.1:27017",
+            "ip": "127.0.0.1",
+            "port": 27017,
             "timeout": 15000000000
         },
         {
             "name": "casandra",
             "protocol": "tcp",
-            "ip": "127.0.0.1:9042",
+            "ip": "127.0.0.1",
+            "port": 9042,
             "timeout": 15000000000
         }
     ]

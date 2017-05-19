@@ -1,0 +1,76 @@
+{
+	"ImportPath": "github.com/tony24681379/k8s-prober",
+	"GoVersion": "go1.8",
+	"GodepVersion": "v79",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/Sirupsen/logrus",
+			"Comment": "v0.11.0-33-g800b0fc",
+			"Rev": "800b0fc4a6cbf28a01d026ab54d6dec7050282fa"
+		},
+		{
+			"ImportPath": "github.com/golang/glog",
+			"Rev": "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
+		},
+		{
+			"ImportPath": "github.com/inconshreveable/mousetrap",
+			"Rev": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
+		},
+		{
+			"ImportPath": "github.com/spf13/cobra",
+			"Rev": "35136c09d8da66b901337c6e86fd8e88a1a255bd"
+		},
+		{
+			"ImportPath": "github.com/spf13/pflag",
+			"Rev": "9ff6c6923cfffbcd502984b8e0c80539a94968b7"
+		},
+		{
+			"ImportPath": "golang.org/x/net/http2",
+			"Rev": "41bba8d80bbfab43231ffdf4c210037baae5f6a3"
+		},
+		{
+			"ImportPath": "golang.org/x/net/http2/hpack",
+			"Rev": "41bba8d80bbfab43231ffdf4c210037baae5f6a3"
+		},
+		{
+			"ImportPath": "golang.org/x/net/lex/httplex",
+			"Rev": "41bba8d80bbfab43231ffdf4c210037baae5f6a3"
+		},
+		{
+			"ImportPath": "golang.org/x/sys/unix",
+			"Rev": "7a6e5648d140666db5d920909e082ca00a87ba2c"
+		},
+		{
+			"ImportPath": "gopkg.in/yaml.v2",
+			"Rev": "4c78c975fe7c825c6d1466c42be594d1d6f3aba6"
+		},
+		{
+			"ImportPath": "k8s.io/kubernetes/pkg/probe",
+			"Comment": "v1.6.0-alpha.0-2912-gde59ede6b2",
+			"Rev": "de59ede6b2f4c2b41b0b66909a7409983244e52a"
+		},
+		{
+			"ImportPath": "k8s.io/kubernetes/pkg/probe/http",
+			"Comment": "v1.6.0-alpha.0-2912-gde59ede6b2",
+			"Rev": "de59ede6b2f4c2b41b0b66909a7409983244e52a"
+		},
+		{
+			"ImportPath": "k8s.io/kubernetes/pkg/probe/tcp",
+			"Comment": "v1.6.0-alpha.0-2912-gde59ede6b2",
+			"Rev": "de59ede6b2f4c2b41b0b66909a7409983244e52a"
+		},
+		{
+			"ImportPath": "k8s.io/kubernetes/pkg/util/net",
+			"Comment": "v1.6.0-alpha.0-2912-gde59ede6b2",
+			"Rev": "de59ede6b2f4c2b41b0b66909a7409983244e52a"
+		},
+		{
+			"ImportPath": "k8s.io/kubernetes/pkg/util/sets",
+			"Comment": "v1.6.0-alpha.0-2912-gde59ede6b2",
+			"Rev": "de59ede6b2f4c2b41b0b66909a7409983244e52a"
+		}
+	]
+}

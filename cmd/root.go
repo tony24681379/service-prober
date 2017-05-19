@@ -45,8 +45,9 @@ func newRootCmd() *cobra.Command {
 		}, Run: func(cmd *cobra.Command, args []string) {
 			if opts.Config == "" {
 				cmd.Help()
+			} else {
+				runProber(opts)
 			}
-			runProber(opts)
 		},
 	}
 	return cmd
@@ -76,6 +77,8 @@ func initProgramFlag(rootCmd *cobra.Command) {
 
 func runProber(opts options) {
 	err := prober.Prober(opts.Config, opts.Port)
-	log.Fatal(err)
-	panic(err)
+	if err != nil {
+		log.Fatal(err)
+		panic(err)
+	}
 }

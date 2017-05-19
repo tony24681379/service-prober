@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -20,16 +19,27 @@ import (
 
 type probeConfig struct {
 	configType string
-	Service    Service
+	Service    service
 }
 
 //Service define file structure
-type Service []struct {
-	Name     string
-	Protocol string
-	IP       string
-	Port     int
-	TimeOut  time.Duration
+type service struct {
+	TCP  tcpService
+	HTTP httpService
+}
+
+type tcpService []struct {
+	Name    string
+	IP      string
+	Port    int
+	TimeOut time.Duration
+}
+
+type httpService []struct {
+	Name    string
+	URL     string
+	Header  string
+	TimeOut time.Duration
 }
 
 type prober struct {
@@ -83,12 +93,10 @@ func (c *probeConfig) convertDataToStruct(configFile []byte) error {
 	if err != nil {
 		return err
 	}
-	for _, config := range c.Service {
-		if config.Protocol == "http" {
-			_, err := url.Parse(config.IP + ":" + strconv.Itoa(config.Port))
-			if err != nil {
-				return err
-			}
+	for _, config := range c.Service.HTTP {
+		_, err := url.Parse(config.URL)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -100,6 +108,7 @@ func Prober(configFileName string, port string) error {
 	config := newConfig(configFileName)
 	p := newProber(config)
 	log.Println(p)
+
 	p.serveHTTP(port)
 	return nil
 }
@@ -124,42 +133,55 @@ func newConfig(configFileName string) probeConfig {
 }
 
 func (p *prober) serveHTTP(port string) {
-	http.HandleFunc("/liveness", func(w http.ResponseWriter, r *http.Request) {
-		ok := true
-		var (
-			errMsgs []string
-			health  probe.Result
-			output  string
-			err     error
-		)
-		for _, config := range p.config.Service {
-			errMsg := ""
-			if config.Protocol == "tcp" {
-				health, output, err = p.tcp.Probe(config.IP, config.Port, config.TimeOut)
-			} else if config.Protocol == "http" {
-				u, _ := url.Parse(config.IP + ":" + strconv.Itoa(config.Port))
-				health, output, err = p.http.Probe(u, nil, config.TimeOut)
-			}
-
-			if health != probe.Success {
-				errMsg += config.Name + " " + output + "\n"
-				ok = false
-			}
-			if err != nil {
-				errMsg += err.Error()
-				ok = false
-			}
-			errMsgs = append(errMsgs, errMsg)
-		}
-
-		if ok {
-			w.Write([]byte("OK"))
-		} else {
-			// Send 503
-			log.Println(errMsgs)
-			http.Error(w, strings.Join(errMsgs, ""), http.StatusServiceUnavailable)
-		}
-	})
+	http.HandleFunc("/liveness", p.liveness)
 	log.Print("serve on port:", port)
 	http.ListenAndServe(":"+port, nil)
+}
+
+func (p *prober) liveness(w http.ResponseWriter, r *http.Request) {
+	ok := true
+	var (
+		errMsgs []string
+		health  probe.Result
+		output  string
+		err     error
+	)
+	for _, config := range p.config.Service.TCP {
+		health, output, err = p.tcp.Probe(config.IP, config.Port, config.TimeOut)
+
+		errMsg := handleError(config.Name, health, output, err)
+
+		if errMsg != "" {
+			errMsgs = append(errMsgs, errMsg)
+		}
+	}
+	for _, config := range p.config.Service.HTTP {
+		u, _ := url.Parse(config.URL)
+
+		health, output, err = p.http.Probe(u, nil, config.TimeOut)
+
+		errMsg := handleError(config.Name, health, output, err)
+
+		if errMsg != "" {
+			errMsgs = append(errMsgs, errMsg)
+		}
+	}
+	if ok {
+		w.Write([]byte("OK"))
+	} else {
+		// Send 503
+		log.Println(errMsgs)
+		http.Error(w, strings.Join(errMsgs, ""), http.StatusServiceUnavailable)
+	}
+}
+
+func handleError(configName string, health probe.Result, output string, err error) string {
+	errMsg := ""
+	if health != probe.Success {
+		errMsg += configName + " " + output + "\n"
+	}
+	if err != nil {
+		errMsg += err.Error()
+	}
+	return errMsg
 }

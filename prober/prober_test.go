@@ -34,20 +34,21 @@ func TestGetConfigType(t *testing.T) {
 
 func TestConvertDataToStruct(t *testing.T) {
 	expectedServics :=
-		Service{
-			{
-				Name:     "mongo",
-				Protocol: "http",
-				IP:       "http://127.0.0.1",
-				Port:     27017,
-				TimeOut:  time.Duration(15) * time.Second,
+		service{
+			tcpService{
+				{
+					Name:    "casandra",
+					IP:      "127.0.0.1",
+					Port:    9042,
+					TimeOut: time.Duration(15) * time.Second,
+				},
 			},
-			{
-				Name:     "casandra",
-				Protocol: "tcp",
-				IP:       "127.0.0.1",
-				Port:     9042,
-				TimeOut:  time.Duration(15) * time.Second,
+			httpService{
+				{
+					Name:    "mongo",
+					URL:     "http://127.0.0.1:27017",
+					TimeOut: time.Duration(15) * time.Second,
+				},
 			},
 		}
 	tests := []struct {
@@ -61,16 +62,15 @@ func TestConvertDataToStruct(t *testing.T) {
 			[]byte(`
 ---
 service:
-- name: mongo
-  protocol: http
-  ip: http://127.0.0.1
-  port: 27017
-  timeout: 15s
-- name: casandra
-  protocol: tcp
-  ip: 127.0.0.1
-  port: 9042
-  timeout: 15s
+  http:
+  - name: mongo
+    url: http://127.0.0.1:27017
+    timeout: 15s
+  tcp:
+  - name: casandra
+    ip: 127.0.0.1
+    port: 9042
+    timeout: 15s
 `),
 			probeConfig{
 				"yaml",
@@ -82,22 +82,23 @@ service:
 			"json",
 			[]byte(`
 {
-	"service": [
-		{
-			"name": "mongo",
-			"protocol": "http",
-			"ip": "http://127.0.0.1",
-			"port": 27017,
-			"timeout": 15000000000
-		},
-		{
-            "name": "casandra",
-            "protocol": "tcp",
-            "ip": "127.0.0.1",
-			"port": 9042,
-            "timeout": 15000000000
-        }
-	]
+    "service": {
+        "tcp": [
+            {
+                "name": "casandra",
+                "ip": "127.0.0.1",
+                "port": 9042,
+                "timeout": 15000000000
+            }
+        ],
+        "http":[
+            {
+                "name": "mongo",
+                "url": "http://127.0.0.1:27017",
+                "timeout": 15000000000
+            }
+        ]
+    }
 }
 `),
 			probeConfig{

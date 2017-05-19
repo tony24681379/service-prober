@@ -115,7 +115,7 @@ service:
 			t.Errorf("#%d: expected result=%v, get=%v", i, tt.expectedConfig, c)
 		}
 		if err != nil {
-			if err.Error() != tt.expectedError.Error() {
+			if err != tt.expectedError {
 				t.Errorf("#%d: expected error=%v, get=%v", i, tt.expectedError, err)
 			}
 		}

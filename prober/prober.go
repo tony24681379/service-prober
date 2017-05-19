@@ -3,7 +3,6 @@ package prober
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -21,13 +20,7 @@ import (
 
 type probeConfig struct {
 	configType string
-	Service    []struct {
-		Name     string
-		Protocol string
-		IP       string
-		Port     int
-		TimeOut  time.Duration
-	}
+	Service    Service
 }
 
 //Service define file structure
@@ -73,7 +66,10 @@ func (c *probeConfig) readConfig(configFileName string) error {
 	if err != nil {
 		return err
 	}
-	c.convertDataToStruct(configFile)
+	err = c.convertDataToStruct(configFile)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -88,9 +84,11 @@ func (c *probeConfig) convertDataToStruct(configFile []byte) error {
 		return err
 	}
 	for _, config := range c.Service {
-		_, err := url.Parse(config.IP + ":" + strconv.Itoa(config.Port))
-		if err != nil {
-			return err
+		if config.Protocol == "http" {
+			_, err := url.Parse(config.IP + ":" + strconv.Itoa(config.Port))
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -101,7 +99,7 @@ func (c *probeConfig) convertDataToStruct(configFile []byte) error {
 func Prober(configFileName string, port string) error {
 	config := newConfig(configFileName)
 	p := newProber(config)
-	fmt.Println(p)
+	log.Println(p)
 	p.serveHTTP(port)
 	return nil
 }

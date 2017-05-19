@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	yaml "gopkg.in/yaml.v2"
@@ -24,18 +25,18 @@ type probeConfig struct {
 
 //Service define file structure
 type service struct {
-	TCP  tcpService
-	HTTP httpService
+	TCP  []tcpService
+	HTTP []httpService
 }
 
-type tcpService []struct {
+type tcpService struct {
 	Name    string
 	IP      string
 	Port    int
 	TimeOut time.Duration
 }
 
-type httpService []struct {
+type httpService struct {
 	Name    string
 	URL     string
 	Header  string
@@ -146,26 +147,39 @@ func (p *prober) liveness(w http.ResponseWriter, r *http.Request) {
 		output  string
 		err     error
 	)
+	var wg sync.WaitGroup
 	for _, config := range p.config.Service.TCP {
-		health, output, err = p.tcp.Probe(config.IP, config.Port, config.TimeOut)
+		wg.Add(1)
+		go func(config tcpService) {
+			defer wg.Done()
+			health, output, err = p.tcp.Probe(config.IP, config.Port, config.TimeOut)
 
-		errMsg := handleError(config.Name, health, output, err)
+			errMsg := p.handleError(config.Name, health, output, err)
 
-		if errMsg != "" {
-			errMsgs = append(errMsgs, errMsg)
-		}
+			if errMsg != "" {
+				ok = false
+				errMsgs = append(errMsgs, errMsg)
+			}
+
+		}(config)
 	}
 	for _, config := range p.config.Service.HTTP {
-		u, _ := url.Parse(config.URL)
+		wg.Add(1)
+		go func(config httpService) {
+			defer wg.Done()
+			u, _ := url.Parse(config.URL)
 
-		health, output, err = p.http.Probe(u, nil, config.TimeOut)
+			health, output, err = p.http.Probe(u, nil, config.TimeOut)
 
-		errMsg := handleError(config.Name, health, output, err)
+			errMsg := p.handleError(config.Name, health, output, err)
 
-		if errMsg != "" {
-			errMsgs = append(errMsgs, errMsg)
-		}
+			if errMsg != "" {
+				ok = false
+				errMsgs = append(errMsgs, errMsg)
+			}
+		}(config)
 	}
+	wg.Wait()
 	if ok {
 		w.Write([]byte("OK"))
 	} else {
@@ -175,7 +189,7 @@ func (p *prober) liveness(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleError(configName string, health probe.Result, output string, err error) string {
+func (p *prober) handleError(configName string, health probe.Result, output string, err error) string {
 	errMsg := ""
 	if health != probe.Success {
 		errMsg += configName + " " + output + "\n"

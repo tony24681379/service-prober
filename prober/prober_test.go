@@ -35,7 +35,7 @@ func TestGetConfigType(t *testing.T) {
 func TestConvertDataToStruct(t *testing.T) {
 	expectedServics :=
 		service{
-			tcpService{
+			[]tcpService{
 				{
 					Name:    "casandra",
 					IP:      "127.0.0.1",
@@ -43,7 +43,7 @@ func TestConvertDataToStruct(t *testing.T) {
 					TimeOut: time.Duration(15) * time.Second,
 				},
 			},
-			httpService{
+			[]httpService{
 				{
 					Name:    "mongo",
 					URL:     "http://127.0.0.1:27017",

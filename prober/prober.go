@@ -44,9 +44,9 @@ type httpService struct {
 }
 
 type prober struct {
-	http   httprobe.HTTPProber
-	tcp    tcprobe.TCPProber
-	config probeConfig
+	httpProber httprobe.HTTPProber
+	tcpProber  tcprobe.TCPProber
+	config     probeConfig
 }
 
 func (c *probeConfig) getConfigType(configFileName string) error {
@@ -114,17 +114,21 @@ func Prober(configFileName string, port string) error {
 	return nil
 }
 
-func newProber(c probeConfig) *prober {
+func newProber(c *probeConfig) *prober {
 	p := &prober{
-		http:   httprobe.New(),
-		tcp:    tcprobe.New(),
-		config: c,
+		config: *c,
+	}
+	if len(c.Service.TCP) > 0 {
+		p.tcpProber = tcprobe.New()
+	}
+	if len(c.Service.HTTP) > 0 {
+		p.httpProber = httprobe.New()
 	}
 	return p
 }
 
-func newConfig(configFileName string) probeConfig {
-	c := probeConfig{}
+func newConfig(configFileName string) *probeConfig {
+	c := &probeConfig{}
 	err := c.readConfig(configFileName)
 	if err != nil {
 		log.Fatal(err)
@@ -152,7 +156,7 @@ func (p *prober) liveness(w http.ResponseWriter, r *http.Request) {
 		wg.Add(1)
 		go func(config tcpService) {
 			defer wg.Done()
-			health, output, err = p.tcp.Probe(config.IP, config.Port, config.TimeOut)
+			health, output, err = p.tcpProber.Probe(config.IP, config.Port, config.TimeOut)
 
 			errMsg := p.handleError(config.Name, health, output, err)
 
@@ -168,8 +172,7 @@ func (p *prober) liveness(w http.ResponseWriter, r *http.Request) {
 		go func(config httpService) {
 			defer wg.Done()
 			u, _ := url.Parse(config.URL)
-
-			health, output, err = p.http.Probe(u, nil, config.TimeOut)
+			health, output, err = p.httpProber.Probe(u, nil, config.TimeOut)
 
 			errMsg := p.handleError(config.Name, health, output, err)
 

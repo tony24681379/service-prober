@@ -2,9 +2,16 @@ package prober
 
 import (
 	"errors"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"testing"
 	"time"
+
+	"k8s.io/kubernetes/pkg/probe"
 )
 
 func TestGetConfigType(t *testing.T) {
@@ -120,5 +127,64 @@ service:
 				t.Errorf("#%d: expected error=%v, get=%v", i, tt.expectedError, err)
 			}
 		}
+	}
+}
+
+type fakeHTTPProber struct {
+	result probe.Result
+	err    error
+}
+
+func (p fakeHTTPProber) Probe(url *url.URL, headers http.Header, timeout time.Duration) (probe.Result, string, error) {
+	return p.result, "", p.err
+}
+
+type fakeTCPProber struct {
+	result probe.Result
+	err    error
+}
+
+func (p fakeTCPProber) Probe(host string, port int, timeout time.Duration) (probe.Result, string, error) {
+	return p.result, "", p.err
+}
+
+func TestLiveness(t *testing.T) {
+	p := &prober{
+		httpProber: fakeHTTPProber{result: probe.Success},
+		tcpProber:  fakeTCPProber{result: probe.Success},
+		config: probeConfig{
+			Service: service{
+				[]tcpService{
+					{
+						Name:    "casandra",
+						IP:      "127.0.0.1",
+						Port:    9042,
+						TimeOut: time.Duration(1) * time.Second,
+					},
+				},
+				[]httpService{
+					{
+						Name:    "mongo",
+						URL:     "http://127.0.0.1:27017",
+						TimeOut: time.Duration(1) * time.Second,
+					},
+				},
+			},
+		},
+	}
+	ts := httptest.NewServer(http.HandlerFunc(p.liveness))
+	defer ts.Close()
+
+	res, err := http.Get(ts.URL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	greeting, err := ioutil.ReadAll(res.Body)
+	res.Body.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if !reflect.DeepEqual(greeting, []byte("OK")) {
+		t.Errorf("liveness error")
 	}
 }

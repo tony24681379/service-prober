@@ -1,5 +1,5 @@
 {
-	"ImportPath": "github.com/tony24681379/k8s-prober",
+	"ImportPath": "github.com/tony24681379/service-prober",
 	"GoVersion": "go1.8",
 	"GodepVersion": "v79",
 	"Packages": [

@@ -21,7 +21,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/tony24681379/k8s-prober/prober"
+	"github.com/tony24681379/service-prober/prober"
 )
 
 type options struct {
@@ -35,7 +35,7 @@ var opts = options{}
 // RootCmd represents the base command when called without any subcommands
 func newRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "k8s-prober",
+		Use:   "service-prober",
 		Short: "Kubernetes liveness and readiness probe tool",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if opts.Debug == true {

@@ -36,6 +36,10 @@
 			"Rev": "41bba8d80bbfab43231ffdf4c210037baae5f6a3"
 		},
 		{
+			"ImportPath": "golang.org/x/net/idna",
+			"Rev": "41bba8d80bbfab43231ffdf4c210037baae5f6a3"
+		},
+		{
 			"ImportPath": "golang.org/x/net/lex/httplex",
 			"Rev": "41bba8d80bbfab43231ffdf4c210037baae5f6a3"
 		},

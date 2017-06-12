@@ -30,6 +30,11 @@ type options struct {
 
 var opts = options{}
 
+func init() {
+	goflag.Set("alsologtostderr", "true")
+	goflag.CommandLine.Parse([]string{})
+}
+
 // RootCmd represents the base command when called without any subcommands
 func newRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -47,8 +52,6 @@ func newRootCmd() *cobra.Command {
 	flags := cmd.Flags()
 	flags.StringVar(&opts.Config, "config", "", "config file")
 	flags.StringVar(&opts.Port, "port", "10000", "serve port")
-	goflag.Lookup("alsologtostderr").Value.Set("true")
-	goflag.CommandLine.Parse([]string{})
 	cmd.PersistentFlags().AddGoFlagSet(goflag.CommandLine)
 	return cmd
 }

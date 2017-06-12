@@ -3,6 +3,11 @@ service:
   http:
   - name: mongo
     url: http://127.0.0.1:27017
+    header:
+    - name: "X-Muffins-Or-Cupcakes"
+      value: "Muffins"
+    - name: "X-Muffins-Or-Plumcakes"
+      value: "Muffins!"
     timeout: 15s
   tcp:
   - name: casandra

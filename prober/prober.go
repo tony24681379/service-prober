@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -12,8 +11,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/glog"
 	yaml "gopkg.in/yaml.v2"
 	"k8s.io/kubernetes/pkg/probe"
+	//	execprobe "k8s.io/kubernetes/pkg/probe/exec"
 	httprobe "k8s.io/kubernetes/pkg/probe/http"
 	tcprobe "k8s.io/kubernetes/pkg/probe/tcp"
 )
@@ -23,10 +24,16 @@ type probeConfig struct {
 	Service    service
 }
 
-//Service define file structure
 type service struct {
+	//	Exec []execService
 	TCP  []tcpService
 	HTTP []httpService
+}
+
+type execService struct {
+	Name    string
+	Cmd     []string
+	TimeOut time.Duration
 }
 
 type tcpService struct {
@@ -39,11 +46,17 @@ type tcpService struct {
 type httpService struct {
 	Name    string
 	URL     string
-	Header  string
+	Header  []httpHeader
 	TimeOut time.Duration
 }
 
+type httpHeader struct {
+	Name  string
+	Value string
+}
+
 type prober struct {
+	//	exec       execprobe.ExecProber
 	httpProber httprobe.HTTPProber
 	tcpProber  tcprobe.TCPProber
 	config     probeConfig
@@ -100,16 +113,16 @@ func (c *probeConfig) convertDataToStruct(configFile []byte) error {
 			return err
 		}
 	}
-
 	return nil
 }
 
-//Prober init prober
+// Prober init prober
 func Prober(configFileName string, port string) error {
 	config := newConfig(configFileName)
 	p := newProber(config)
-	log.Println(p)
-
+	if glog.V(2) {
+		glog.Infof("%+v", p)
+	}
 	p.serveHTTP(port)
 	return nil
 }
@@ -131,7 +144,7 @@ func newConfig(configFileName string) *probeConfig {
 	c := &probeConfig{}
 	err := c.readConfig(configFileName)
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatalln(err)
 		panic(err)
 	}
 	return c
@@ -139,8 +152,16 @@ func newConfig(configFileName string) *probeConfig {
 
 func (p *prober) serveHTTP(port string) {
 	http.HandleFunc("/liveness", p.liveness)
-	log.Print("serve on port:", port)
+	glog.Info("serve on port:", port)
 	http.ListenAndServe(":"+port, nil)
+}
+
+func buildHeader(headerList []httpHeader) http.Header {
+	headers := make(http.Header)
+	for _, header := range headerList {
+		headers[header.Name] = append(headers[header.Name], header.Value)
+	}
+	return headers
 }
 
 func (p *prober) liveness(w http.ResponseWriter, r *http.Request) {
@@ -164,7 +185,6 @@ func (p *prober) liveness(w http.ResponseWriter, r *http.Request) {
 				ok = false
 				errMsgs = append(errMsgs, errMsg)
 			}
-
 		}(config)
 	}
 	for _, config := range p.config.Service.HTTP {
@@ -172,7 +192,8 @@ func (p *prober) liveness(w http.ResponseWriter, r *http.Request) {
 		go func(config httpService) {
 			defer wg.Done()
 			u, _ := url.Parse(config.URL)
-			health, output, err = p.httpProber.Probe(u, nil, config.TimeOut)
+			header := buildHeader(config.Header)
+			health, output, err = p.httpProber.Probe(u, header, config.TimeOut)
 
 			errMsg := p.handleError(config.Name, health, output, err)
 
@@ -187,7 +208,7 @@ func (p *prober) liveness(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("OK"))
 	} else {
 		// Send 503
-		log.Println(errMsgs)
+		glog.Warning(errMsgs)
 		http.Error(w, strings.Join(errMsgs, ""), http.StatusServiceUnavailable)
 	}
 }

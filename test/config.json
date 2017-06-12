@@ -1,19 +1,24 @@
 {
     "service": {
-        "tcp": [
-            {
-                "name": "casandra",
-                "ip": "127.0.0.1",
-                "port": 9042,
-                "timeout": 15000000000
-            }
-        ],
-        "http":[
-            {
-                "name": "mongo",
-                "url": "http://127.0.0.1:27017",
-                "timeout": 15000000000
-            }
-        ]
+        "tcp": [{
+            "name": "casandra",
+            "ip": "127.0.0.1",
+            "port": 9042,
+            "timeout": 15000000000
+        }],
+        "http": [{
+            "name": "mongo",
+            "url": "http://127.0.0.1:27017",
+            "header": [{
+                    "name": "X-Muffins-Or-Cupcakes",
+                    "value": "Muffins"
+                },
+                {
+                    "name": "X-Muffins-Or-Plumcakes",
+                    "value": "Muffins!"
+                }
+            ],
+            "timeout": 15000000000
+        }]
     }
 }

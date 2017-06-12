@@ -3,7 +3,6 @@ package prober
 import (
 	"errors"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -11,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/probe"
 )
 
@@ -52,8 +52,18 @@ func TestConvertDataToStruct(t *testing.T) {
 			},
 			[]httpService{
 				{
-					Name:    "mongo",
-					URL:     "http://127.0.0.1:27017",
+					Name: "mongo",
+					URL:  "http://127.0.0.1:27017",
+					Header: []httpHeader{
+						{
+							Name:  "X-Muffins-Or-Cupcakes",
+							Value: "Muffins",
+						},
+						{
+							Name:  "X-Muffins-Or-Plumcakes",
+							Value: "Muffins!",
+						},
+					},
 					TimeOut: time.Duration(15) * time.Second,
 				},
 			},
@@ -72,6 +82,11 @@ service:
   http:
   - name: mongo
     url: http://127.0.0.1:27017
+    header:
+    - name: "X-Muffins-Or-Cupcakes"
+      value: "Muffins"
+    - name: "X-Muffins-Or-Plumcakes"
+      value: "Muffins!"
     timeout: 15s
   tcp:
   - name: casandra
@@ -90,21 +105,26 @@ service:
 			[]byte(`
 {
     "service": {
-        "tcp": [
-            {
-                "name": "casandra",
-                "ip": "127.0.0.1",
-                "port": 9042,
-                "timeout": 15000000000
-            }
-        ],
-        "http":[
-            {
-                "name": "mongo",
-                "url": "http://127.0.0.1:27017",
-                "timeout": 15000000000
-            }
-        ]
+        "tcp": [{
+            "name": "casandra",
+            "ip": "127.0.0.1",
+            "port": 9042,
+            "timeout": 15000000000
+        }],
+        "http": [{
+            "name": "mongo",
+            "url": "http://127.0.0.1:27017",
+            "header": [{
+                    "name": "X-Muffins-Or-Cupcakes",
+                    "value": "Muffins"
+                },
+                {
+                    "name": "X-Muffins-Or-Plumcakes",
+                    "value": "Muffins!"
+                }
+            ],
+            "timeout": 15000000000
+        }]
     }
 }
 `),
@@ -199,15 +219,42 @@ func TestLiveness(t *testing.T) {
 		defer ts.Close()
 		res, err := http.Get(ts.URL)
 		if err != nil {
-			log.Fatal(err)
+			glog.Fatal(err)
 		}
 		response, err := ioutil.ReadAll(res.Body)
 		res.Body.Close()
 		if err != nil {
-			log.Fatal(err)
+			glog.Fatal(err)
 		}
 		if !reflect.DeepEqual(response, tt.expectedResult) {
 			t.Errorf("#%d: expected error=%s, get=%s", i, tt.expectedResult, response)
+		}
+	}
+}
+
+func TestHTTPHeaders(t *testing.T) {
+	testCases := []struct {
+		input  []httpHeader
+		output http.Header
+	}{
+		{[]httpHeader{}, http.Header{}},
+		{[]httpHeader{
+			{Name: "X-Muffins-Or-Cupcakes", Value: "Muffins"},
+		}, http.Header{"X-Muffins-Or-Cupcakes": {"Muffins"}}},
+		{[]httpHeader{
+			{Name: "X-Muffins-Or-Cupcakes", Value: "Muffins"},
+			{Name: "X-Muffins-Or-Plumcakes", Value: "Muffins!"},
+		}, http.Header{"X-Muffins-Or-Cupcakes": {"Muffins"},
+			"X-Muffins-Or-Plumcakes": {"Muffins!"}}},
+		{[]httpHeader{
+			{Name: "X-Muffins-Or-Cupcakes", Value: "Muffins"},
+			{Name: "X-Muffins-Or-Cupcakes", Value: "Cupcakes, too"},
+		}, http.Header{"X-Muffins-Or-Cupcakes": {"Muffins", "Cupcakes, too"}}},
+	}
+	for _, test := range testCases {
+		headers := buildHeader(test.input)
+		if !reflect.DeepEqual(test.output, headers) {
+			t.Errorf("Expected %#v, got %#v", test.output, headers)
 		}
 	}
 }

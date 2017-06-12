@@ -15,11 +15,9 @@
 package cmd
 
 import (
-	"fmt"
-	"log"
-	"os"
+	goflag "flag"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 	"github.com/tony24681379/service-prober/prober"
 )
@@ -37,12 +35,7 @@ func newRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "service-prober",
 		Short: "Kubernetes liveness and readiness probe tool",
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			if opts.Debug == true {
-				logrus.SetLevel(logrus.DebugLevel)
-				fmt.Println("debug")
-			}
-		}, Run: func(cmd *cobra.Command, args []string) {
+		Run: func(cmd *cobra.Command, args []string) {
 			if opts.Config == "" {
 				cmd.Help()
 			} else {
@@ -50,35 +43,26 @@ func newRootCmd() *cobra.Command {
 			}
 		},
 	}
+
+	flags := cmd.Flags()
+	flags.StringVar(&opts.Config, "config", "", "config file")
+	flags.StringVar(&opts.Port, "port", "10000", "serve port")
+	goflag.Lookup("alsologtostderr").Value.Set("true")
+	goflag.CommandLine.Parse([]string{})
+	cmd.PersistentFlags().AddGoFlagSet(goflag.CommandLine)
 	return cmd
 }
 
-// Execute adds all child commands to the root command sets flags appropriately.
-func execute(rootCmd *cobra.Command) {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(-1)
-	}
-}
-
-//InitCmd init cobra command
-func InitCmd() {
+// Run init cobra command
+func Run() error {
 	rootCmd := newRootCmd()
-	initProgramFlag(rootCmd)
-	execute(rootCmd)
-}
-
-func initProgramFlag(rootCmd *cobra.Command) {
-	rootCmd.PersistentFlags().BoolVarP(&opts.Debug, "debug", "D", false, "Enable debug mode")
-	flags := rootCmd.Flags()
-	flags.StringVar(&opts.Config, "config", "", "config file")
-	flags.StringVar(&opts.Port, "port", "10000", "serve port")
+	return rootCmd.Execute()
 }
 
 func runProber(opts options) {
 	err := prober.Prober(opts.Config, opts.Port)
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 		panic(err)
 	}
 }

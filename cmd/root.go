@@ -23,7 +23,6 @@ import (
 )
 
 type options struct {
-	Debug  bool
 	Config string
 	Port   string
 }

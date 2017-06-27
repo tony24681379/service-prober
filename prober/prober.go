@@ -153,7 +153,7 @@ func newConfig(configFileName string) *probeConfig {
 func (p *prober) serveHTTP(port string) {
 	http.HandleFunc("/liveness", p.liveness)
 	glog.Info("serve on port:", port)
-	http.ListenAndServe(":"+port, nil)
+	glog.Fatal(http.ListenAndServe(":"+port, nil))
 }
 
 func buildHeader(headerList []httpHeader) http.Header {
